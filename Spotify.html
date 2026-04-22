@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COVER VAULT - Ultra HD Music Archive</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+
+        :root {
+            --spotify-green: #1DB954;
+            --bg-main: #050505;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: #ffffff;
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        /* 极光背景效果 */
+        .hero-gradient {
+            position: absolute;
+            top: -10%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            height: 600px;
+            background: radial-gradient(circle at 50% 50%, rgba(29, 185, 84, 0.12) 0%, transparent 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .search-wrapper {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .search-wrapper:focus-within {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--spotify-green);
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--spotify-green);
+        }
+
+        .cover-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.4s ease;
+        }
+
+        .cover-card:hover {
+            background: rgba(255, 255, 255, 0.07);
+            transform: translateY(-10px);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .shimmer {
+            background: linear-gradient(90deg, #121212 25%, #1a1a1a 50%, #121212 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        #toast {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            z-index: 100;
+            transform: translateX(150%);
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        #toast.show { transform: translateX(0); }
+
+        .btn-download {
+            background: #ffffff;
+            color: #000000;
+            font-weight: 800;
+            transition: all 0.3s;
+        }
+
+        .btn-download:hover {
+            background: var(--spotify-green);
+            color: #ffffff;
+            transform: scale(1.02);
+        }
+
+        /* 隐藏滚动条 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="hero-gradient"></div>
+
+    <!-- 通知 -->
+    <div id="toast" class="bg-zinc-900 border border-zinc-800 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4">
+        <div class="w-8 h-8 bg-[#1DB954] rounded-full flex items-center justify-center text-white">
+            <i class="fas fa-check text-xs"></i>
+        </div>
+        <div>
+            <p class="text-xs text-zinc-500 font-bold uppercase tracking-widest">SUCCESS</p>
+            <p id="toastMsg" class="text-sm font-semibold text-white">下载已开始</p>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-6 py-12">
+        <!-- 主导航 -->
+        <nav class="flex items-center justify-between mb-24">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="location.reload()">
+                <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
+                    <i class="fab fa-spotify text-2xl text-black"></i>
+                </div>
+                <span class="text-xl font-extrabold tracking-tighter">COVER VAULT</span>
+            </div>
+            <div class="hidden md:flex items-center gap-8 text-[11px] font-bold uppercase tracking-widest text-zinc-500">
+                <a href="#" class="hover:text-white transition-colors">Archive</a>
+                <a href="#" class="hover:text-white transition-colors">API Status</a>
+                <a href="#" class="text-white">Global Search</a>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <div class="text-center mb-20">
+            <h2 class="text-6xl md:text-8xl font-black tracking-tighter mb-8 leading-tight">
+                Collection of <br>
+                <span class="text-zinc-700 italic">Visual Arts.</span>
+            </h2>
+            <p class="max-w-xl mx-auto text-zinc-500 text-sm md:text-lg font-medium leading-relaxed mb-12">
+                获取全球范围内数百万张超高清音乐专辑封面。只需输入歌手或专辑名称，即可开启您的艺术金库。
+            </p>
+
+            <!-- 搜索框 -->
+            <div class="w-full max-w-2xl mx-auto">
+                <div class="search-wrapper rounded-3xl flex items-center px-8 shadow-2xl">
+                    <i class="fas fa-search text-zinc-500 mr-5 text-xl"></i>
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        placeholder="Search for Artist, Album or Track..." 
+                        class="w-full bg-transparent border-none py-7 outline-none text-white font-semibold text-lg placeholder-zinc-700"
+                        autocomplete="off"
+                    >
+                    <div class="flex items-center gap-3">
+                        <span class="hidden sm:block text-[10px] font-bold text-zinc-600 bg-black/30 px-3 py-1.5 rounded-lg border border-white/5 uppercase tracking-tighter">Press Enter</span>
+                        <button id="clearBtn" class="text-zinc-600 hover:text-white">
+                            <i class="fas fa-times-circle text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 结果展示 -->
+        <div id="statusMessage" class="hidden flex flex-col items-center justify-center py-20 gap-4">
+            <div class="w-8 h-8 border-2 border-zinc-800 border-t-white rounded-full animate-spin"></div>
+            <span class="text-zinc-600 text-[10px] font-bold uppercase tracking-[0.3em]">Accessing Database...</span>
+        </div>
+
+        <div id="resultsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+            <!-- 初始占位提示 -->
+            <div class="col-span-full text-center py-20">
+                <p class="text-zinc-800 text-[80px] font-black uppercase tracking-tighter opacity-10 select-none">DISCOVER</p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-40 border-t border-white/5 py-20 text-center">
+        <p class="text-zinc-600 text-[10px] font-bold uppercase tracking-[0.5em]">COVER VAULT • HD ARCHIVE 2024</p>
+    </footer>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const statusMessage = document.getElementById('statusMessage');
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toastMsg');
+
+        function showToast(msg) {
+            toastMsg.innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            searchInput.value = '';
+            searchInput.focus();
+        });
+
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') fetchCovers(searchInput.value);
+        });
+
+        async function fetchCovers(query) {
+            if (!query.trim()) return;
+            statusMessage.classList.remove('hidden');
+            resultsGrid.innerHTML = '';
+
+            try {
+                // 提高 Limit 增加丰富度
+                const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=50`;
+                const response = await fetch(url);
+                const data = await response.json();
+                statusMessage.classList.add('hidden');
+                
+                if (data.results && data.results.length > 0) {
+                    renderResults(data.results);
+                } else {
+                    resultsGrid.innerHTML = `<div class="col-span-full text-center py-40 text-zinc-700 font-bold uppercase tracking-widest">No entries found</div>`;
+                }
+            } catch (error) {
+                statusMessage.innerHTML = 'Error connecting to database.';
+                console.error(error);
+            }
+        }
+
+        function renderResults(songs) {
+            const seenAlbums = new Set();
+            const uniqueResults = [];
+
+            songs.forEach(item => {
+                if (item.collectionId && !seenAlbums.has(item.collectionId)) {
+                    seenAlbums.add(item.collectionId);
+                    uniqueResults.push(item);
+                }
+            });
+
+            resultsGrid.innerHTML = uniqueResults.map((item) => {
+                const hdUrl = item.artworkUrl100.replace('100x100bb.jpg', '1500x1500bb.jpg');
+                const safeName = item.collectionName.replace(/[\\/:*?"<>|]/g, '').substring(0, 60);
+                
+                return `
+                    <div class="cover-card rounded-[24px] p-2 overflow-hidden flex flex-col h-full group">
+                        <div class="aspect-square w-full overflow-hidden rounded-[18px] bg-zinc-900 relative">
+                            <div class="absolute inset-0 shimmer opacity-10"></div>
+                            <img 
+                                src="${hdUrl}" 
+                                alt="${item.collectionName}" 
+                                class="w-full h-full object-cover opacity-0 relative z-10 cursor-zoom-in transition-transform duration-700 group-hover:scale-110"
+                                onload="this.style.opacity='1'; this.previousElementSibling.style.display='none'"
+                                onclick="window.open('${hdUrl}', '_blank')"
+                                loading="lazy"
+                            >
+                        </div>
+                        <div class="p-4 flex flex-col justify-between flex-grow">
+                            <div>
+                                <h3 class="font-bold text-sm line-clamp-1 mb-1 tracking-tight" title="${item.collectionName}">${item.collectionName}</h3>
+                                <p class="text-zinc-600 text-[10px] font-bold uppercase tracking-widest truncate">${item.artistName}</p>
+                            </div>
+                            <button 
+                                onclick="triggerDownload('${hdUrl}', '${safeName}', this)"
+                                class="btn-download mt-5 w-full py-3.5 rounded-xl text-[10px] uppercase tracking-widest active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                <i class="fas fa-download text-[9px]"></i> Save Art
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function triggerDownload(url, filename, btn) {
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = `${filename}.jpg`;
+                document.body.appendChild(link);
+                link.click();
+                
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(blobUrl);
+                showToast("已成功保存至下载文件夹");
+            } catch (error) {
+                window.open(url, '_blank');
+                showToast("权限受限，已为你打开大图");
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            }
+        }
+
+        // 快捷键支持
+        window.addEventListener('keydown', (e) => {
+            if (e.key === '/' && document.activeElement !== searchInput) {
+                e.preventDefault();
+                searchInput.focus();
+            }
+        });
+    </script>
+</body>
+</html>
