@@ -19,17 +19,17 @@
             color: #ffffff;
             font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
             scroll-behavior: smooth;
+            overflow-x: hidden;
         }
 
-        /* 极光背景效果 */
         .hero-gradient {
             position: absolute;
             top: -10%;
             left: 50%;
             transform: translateX(-50%);
             width: 100%;
-            height: 600px;
-            background: radial-gradient(circle at 50% 50%, rgba(29, 185, 84, 0.12) 0%, transparent 70%);
+            height: 700px;
+            background: radial-gradient(circle at 50% 40%, rgba(29, 185, 84, 0.15) 0%, transparent 70%);
             z-index: -1;
             pointer-events: none;
         }
@@ -71,11 +71,30 @@
             100% { background-position: -200% 0; }
         }
 
+        /* 侧边栏抽屉样式 */
+        #archiveDrawer {
+            position: fixed;
+            top: 0;
+            right: -450px;
+            width: 400px;
+            height: 100vh;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(30px);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            z-index: 200;
+            transition: right 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: -20px 0 50px rgba(0,0,0,0.5);
+        }
+
+        #archiveDrawer.open {
+            right: 0;
+        }
+
         #toast {
             position: fixed;
             top: 2rem;
             right: 2rem;
-            z-index: 100;
+            z-index: 300;
             transform: translateX(150%);
             transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
@@ -95,13 +114,24 @@
             transform: scale(1.02);
         }
 
-        /* 隐藏滚动条 */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
     </style>
 </head>
 <body class="min-h-screen">
     <div class="hero-gradient"></div>
+
+    <!-- 侧边收藏夹 -->
+    <div id="archiveDrawer" class="p-8 flex flex-col">
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-2xl font-black tracking-tighter">ARCHIVE</h2>
+            <button onclick="toggleDrawer()" class="text-zinc-500 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div id="archiveList" class="flex-grow overflow-y-auto space-y-4 pr-2">
+            <p class="text-zinc-600 text-xs font-bold uppercase tracking-widest text-center mt-20">暂无收藏记录</p>
+        </div>
+        <button onclick="clearArchive()" class="mt-8 text-[10px] font-bold text-zinc-600 hover:text-red-500 uppercase tracking-widest transition-colors">Clear All History</button>
+    </div>
 
     <!-- 通知 -->
     <div id="toast" class="bg-zinc-900 border border-zinc-800 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4">
@@ -121,12 +151,16 @@
                 <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
                     <i class="fab fa-spotify text-2xl text-black"></i>
                 </div>
-                <span class="text-xl font-extrabold tracking-tighter">COVER VAULT</span>
+                <span class="text-xl font-extrabold tracking-tighter uppercase">Cover Vault</span>
             </div>
-            <div class="hidden md:flex items-center gap-8 text-[11px] font-bold uppercase tracking-widest text-zinc-500">
-                <a href="#" class="hover:text-white transition-colors">Archive</a>
-                <a href="#" class="hover:text-white transition-colors">API Status</a>
-                <a href="#" class="text-white">Global Search</a>
+            <div class="flex items-center gap-8 text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+                <button onclick="toggleDrawer()" class="hover:text-white transition-colors flex items-center gap-2">
+                    Archive <span id="archiveCount" class="bg-zinc-800 px-1.5 rounded-sm text-[9px] text-zinc-400 group-hover:text-white">0</span>
+                </button>
+                <div id="apiStatus" class="flex items-center gap-2 text-zinc-500">
+                    API Status <div id="statusIndicator" class="w-2 h-2 rounded-full bg-zinc-700"></div>
+                </div>
+                <a href="#" class="text-white hidden md:block">Global Search</a>
             </div>
         </nav>
 
@@ -168,15 +202,14 @@
         </div>
 
         <div id="resultsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
-            <!-- 初始占位提示 -->
             <div class="col-span-full text-center py-20">
                 <p class="text-zinc-800 text-[80px] font-black uppercase tracking-tighter opacity-10 select-none">DISCOVER</p>
             </div>
         </div>
     </div>
 
-    <footer class="mt-40 border-t border-white/5 py-20 text-center">
-        <p class="text-zinc-600 text-[10px] font-bold uppercase tracking-[0.5em]">COVER VAULT • HD ARCHIVE 2024</p>
+    <footer class="mt-40 border-t border-white/5 py-24 text-center">
+        <p class="text-zinc-600 text-[10px] font-bold uppercase tracking-[0.5em]">COVER VAULT • HD ARCHIVE 2026</p>
     </footer>
 
     <script>
@@ -185,11 +218,78 @@
         const statusMessage = document.getElementById('statusMessage');
         const toast = document.getElementById('toast');
         const toastMsg = document.getElementById('toastMsg');
+        const archiveList = document.getElementById('archiveList');
+        const archiveCount = document.getElementById('archiveCount');
+        const statusIndicator = document.getElementById('statusIndicator');
+
+        let archive = JSON.parse(localStorage.getItem('cover_vault_archive') || '[]');
+
+        // 初始化
+        window.onload = () => {
+            updateArchiveUI();
+            checkAPIStatus();
+            setInterval(checkAPIStatus, 30000); // 每30秒检查一次状态
+        };
 
         function showToast(msg) {
             toastMsg.innerText = msg;
             toast.classList.add('show');
             setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        function toggleDrawer() {
+            document.getElementById('archiveDrawer').classList.toggle('open');
+        }
+
+        // 状态检查
+        async function checkAPIStatus() {
+            const start = Date.now();
+            try {
+                const res = await fetch('https://itunes.apple.com/search?term=test&limit=1', { mode: 'no-cors' });
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]';
+                console.log(`API Status: OK (${Date.now() - start}ms)`);
+            } catch (e) {
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]';
+            }
+        }
+
+        // 收藏逻辑
+        function addToArchive(item) {
+            if (!archive.find(a => a.id === item.id)) {
+                archive.unshift(item);
+                if (archive.length > 50) archive.pop(); // 最多存50条
+                localStorage.setItem('cover_vault_archive', JSON.stringify(archive));
+                updateArchiveUI();
+            }
+        }
+
+        function updateArchiveUI() {
+            archiveCount.innerText = archive.length;
+            if (archive.length === 0) {
+                archiveList.innerHTML = `<p class="text-zinc-600 text-xs font-bold uppercase tracking-widest text-center mt-20">暂无收藏记录</p>`;
+                return;
+            }
+
+            archiveList.innerHTML = archive.map(item => `
+                <div class="flex items-center gap-4 p-3 bg-white/5 rounded-xl border border-white/5 group hover:border-white/10 transition-all">
+                    <img src="${item.url}" class="w-12 h-12 rounded-lg object-cover">
+                    <div class="flex-grow min-w-0">
+                        <p class="text-xs font-bold truncate">${item.name}</p>
+                        <p class="text-[9px] text-zinc-500 font-bold uppercase tracking-wider truncate">${item.artist}</p>
+                    </div>
+                    <button onclick="window.open('${item.url}', '_blank')" class="text-zinc-600 hover:text-white p-2">
+                        <i class="fas fa-external-link-alt text-[10px]"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function clearArchive() {
+            if(confirm('确定要清空所有收藏历史吗？')) {
+                archive = [];
+                localStorage.setItem('cover_vault_archive', JSON.stringify(archive));
+                updateArchiveUI();
+            }
         }
 
         document.getElementById('clearBtn').addEventListener('click', () => {
@@ -207,7 +307,6 @@
             resultsGrid.innerHTML = '';
 
             try {
-                // 提高 Limit 增加丰富度
                 const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=50`;
                 const response = await fetch(url);
                 const data = await response.json();
@@ -258,7 +357,7 @@
                                 <p class="text-zinc-600 text-[10px] font-bold uppercase tracking-widest truncate">${item.artistName}</p>
                             </div>
                             <button 
-                                onclick="triggerDownload('${hdUrl}', '${safeName}', this)"
+                                onclick="triggerDownload('${hdUrl}', '${safeName}', this, '${item.collectionId}', '${item.artistName}')"
                                 class="btn-download mt-5 w-full py-3.5 rounded-xl text-[10px] uppercase tracking-widest active:scale-95 flex items-center justify-center gap-2"
                             >
                                 <i class="fas fa-download text-[9px]"></i> Save Art
@@ -269,12 +368,15 @@
             }).join('');
         }
 
-        async function triggerDownload(url, filename, btn) {
+        async function triggerDownload(url, filename, btn, id, artist) {
             const originalContent = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
             btn.disabled = true;
 
             try {
+                // 自动加入收藏夹
+                addToArchive({ id, name: filename, artist, url });
+
                 const response = await fetch(url);
                 const blob = await response.blob();
                 const blobUrl = window.URL.createObjectURL(blob);
@@ -287,17 +389,16 @@
                 
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(blobUrl);
-                showToast("已成功保存至下载文件夹");
+                showToast("已成功保存并同步至 Archive");
             } catch (error) {
                 window.open(url, '_blank');
-                showToast("权限受限，已为你打开大图");
+                showToast("权限受限，已为您打开大图");
             } finally {
                 btn.innerHTML = originalContent;
                 btn.disabled = false;
             }
         }
 
-        // 快捷键支持
         window.addEventListener('keydown', (e) => {
             if (e.key === '/' && document.activeElement !== searchInput) {
                 e.preventDefault();
